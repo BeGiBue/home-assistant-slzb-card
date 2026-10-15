@@ -14,14 +14,14 @@ Zeigt auf einen Blick:
 
 ### Automatisch
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BeGiBue&repository=slzb-card&category=plugin)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BeGiBue&repository=home-assistant-slzb-card&category=plugin)
 
 Der Button öffnet deine Home-Assistant-Instanz direkt auf der Seite dieses Repositories in HACS. Dort **Herunterladen** wählen und danach den Browser bzw. die Home-Assistant-App komplett neu laden.
 
 ### Manuell
 
 1. HACS öffnen → Menü (drei Punkte) → **Benutzerdefinierte Repositories**
-2. `https://github.com/BeGiBue/slzb-card` eintragen, Typ **Dashboard** wählen, hinzufügen
+2. `https://github.com/BeGiBue/home-assistant-slzb-card` eintragen, Typ **Dashboard** wählen, hinzufügen
 3. **SLZB Card** installieren
 4. Browser bzw. Home-Assistant-App komplett neu laden
 
