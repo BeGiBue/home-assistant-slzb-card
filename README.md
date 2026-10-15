@@ -1,4 +1,6 @@
-<img src="https://raw.githubusercontent.com/BeGiBue/home-assistant-slzb-card/main/images/slzb-card-logo-160.png" alt="SLZB Card" width="160">
+<p align="center">
+  <img src="https://raw.githubusercontent.com/BeGiBue/home-assistant-slzb-card/main/images/slzb-card-logo-160.png?v=2" alt="SLZB Card" width="160">
+</p>
 
 # SLZB Card
 
