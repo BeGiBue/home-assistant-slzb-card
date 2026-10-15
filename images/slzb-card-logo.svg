@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t">
+  <title id="t">SLZB Card</title>
+  <circle cx="256" cy="256" r="232" fill="#0a6070"/>
+  <rect x="246" y="250" width="20" height="130" rx="10" fill="#ffffff"/>
+  <circle cx="256" cy="232" r="24" fill="#f59e0b"/>
+  <path d="M296 192 A64 64 0 0 1 296 272" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+  <path d="M326 164 A104 104 0 0 1 326 300" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+  <path d="M216 192 A64 64 0 0 0 216 272" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+  <path d="M186 164 A104 104 0 0 0 186 300" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+</svg>
