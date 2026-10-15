@@ -14,6 +14,10 @@ Zeigt auf einen Blick:
 - Freigestelltes Gerätebild, direkt in der Karte eingebettet (optional eigene Bild-URL)
 - Passt sich Light-/Dark-Mode und Themes an, läuft auf Handy, Tablet und Desktop
 
+## Vorschau
+
+<img src="screenshots/slzb-normal-350-light.png" width="350" alt="SLZB Card im Normalbetrieb, 350 px Kartenbreite, helles Theme">
+
 ## Installation über HACS
 
 ### Automatisch
