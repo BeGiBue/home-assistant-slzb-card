@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/BeGiBue/home-assistant-slzb-card/main/images/slzb-card-logo-160.png" alt="SLZB Card" width="160">
+
 # SLZB Card
 
 Übersichtskarte für den **SMLIGHT SLZB-MRW10U** (PoE-Gerät mit Zigbee, Z-Wave und Thread) in Home Assistant.
