@@ -16,7 +16,7 @@ Zeigt auf einen Blick:
 
 ## Vorschau
 
-<img src="screenshots/slzb-normal-350-light.png" width="350" alt="SLZB Card im Normalbetrieb, 350 px Kartenbreite, helles Theme">
+<img src="https://raw.githubusercontent.com/BeGiBue/home-assistant-slzb-card/main/screenshots/slzb-normal-350-light.png" width="350" alt="SLZB Card im Normalbetrieb, 350 px Kartenbreite, helles Theme">
 
 ## Installation über HACS
 
