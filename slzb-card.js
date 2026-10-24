@@ -1,11 +1,11 @@
 /*
  * SLZB Card – Übersichtskarte für den SMLIGHT SLZB-MRW10U (Zigbee / Z-Wave / Thread, PoE)
- * Version 1.0.6
+ * Version 2.0.0
  * Ein einzelnes JavaScript-File, kein Build nötig. Stil angelehnt an die NAS-Card,
  * der Code ist komplett eigenständig geschrieben.
  */
 
-const SLZB_VERSION = "1.0.6";
+const SLZB_VERSION = "2.0.0";
 
 const SLZB_DEFAULTS = {
   title: "SLZB-MRW10U",
