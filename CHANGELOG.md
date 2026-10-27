@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.1 - 2026-10-27
+
+- Aufräumarbeiten ohne Funktionsänderung: mehrfach vorhandene Prüfung auf nicht erreichbare Geräte zusammengeführt, nie zutreffende Sicherheitsnetze und ein ungenutzter Sonderfall im Editor entfernt. Aussehen, Konfiguration und Verhalten bleiben unverändert.
+- Repository verschlankt: nicht benötigte Logo-Dateien und die Pflicht-Dateien `RELEASE_NOTES_<Version>.md` entfernt (der Release-Text kommt jetzt aus diesem Changelog), Security-Review gekürzt.
+
 ## 2.0.0 - 2026-10-24
 
 - Aufnahme in den offiziellen HACS-Katalog; Installation über die HACS-Suche als Standardweg dokumentiert.
