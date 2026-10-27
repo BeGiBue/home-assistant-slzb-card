@@ -40,8 +40,8 @@ Das Projekt ist im offiziellen HACS-Katalog enthalten. Ein benutzerdefiniertes R
 
 ### Bestehende Installation aus einem Custom Repository übernehmen
 
-1. Prüfen, ob **SLZB Card** in der HACS-Suche im offiziellen Katalog verfügbar ist. Falls noch nicht, HACS aktualisieren und den bisherigen Eintrag vorerst behalten.
-2. Sobald der Katalogeintrag verfügbar ist, unter **HACS → Benutzerdefinierte Repositories** nur den Eintrag für `BeGiBue/home-assistant-slzb-card` entfernen.
+1. Prüfen, dass **SLZB Card** in der HACS-Suche im offiziellen Katalog verfügbar ist.
+2. Danach unter **HACS → Benutzerdefinierte Repositories** nur den Eintrag für `BeGiBue/home-assistant-slzb-card` entfernen.
 3. Die bestehende Installation **nicht deinstallieren**. Dashboard-Karten, YAML-Konfiguration und vorhandene Ressourcen beibehalten.
 4. HACS aktualisieren bzw. die Repository-Informationen neu laden und prüfen, dass die installierte Karte weiterhin erkannt wird und Updates angeboten werden.
 5. Nach einem Update das Frontend neu laden und die bestehenden Karten prüfen.
