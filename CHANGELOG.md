@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.0 - 2026-11-04
+
+- The card and its editor now appear in English by default and in German when Home Assistant is set to German. / Karte und Editor erscheinen jetzt standardmäßig auf Englisch und auf Deutsch, wenn Home Assistant auf Deutsch eingestellt ist.
+- README shortened and available in English and German. / README gekürzt und auf Englisch und Deutsch verfügbar.
+
 ## 2.0.1 - 2026-10-27
 
 - Aufräumarbeiten ohne Funktionsänderung: mehrfach vorhandene Prüfung auf nicht erreichbare Geräte zusammengeführt, nie zutreffende Sicherheitsnetze und ein ungenutzter Sonderfall im Editor entfernt. Aussehen, Konfiguration und Verhalten bleiben unverändert.

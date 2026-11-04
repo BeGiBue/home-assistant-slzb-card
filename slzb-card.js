@@ -1,11 +1,11 @@
 /*
  * SLZB Card – Übersichtskarte für den SMLIGHT SLZB-MRW10U (Zigbee / Z-Wave / Thread, PoE)
- * Version 2.0.1
+ * Version 2.1.0
  * Ein einzelnes JavaScript-File, kein Build nötig. Stil angelehnt an die NAS-Card,
  * der Code ist komplett eigenständig geschrieben.
  */
 
-const SLZB_VERSION = "2.0.1";
+const SLZB_VERSION = "2.1.0";
 
 const SLZB_DEFAULTS = {
   title: "SLZB-MRW10U",
@@ -27,25 +27,89 @@ const SLZB_DEFAULTS = {
   zwave_restart_entity: "button.slzb_mrw10u_z_wave_neustart",
 };
 
-const SLZB_LABELS = {
-  title: "Titel",
-  subtitle: "Untertitel",
-  show_image: "Gerätebild anzeigen",
-  image_url: "Eigene Bild-URL (leer = mitgeliefertes Bild)",
-  image_mode: "Bildposition",
-  image_opacity: "Bild-Deckkraft (nur Hintergrund)",
-  confirm_actions: "Neustart mit zweitem Tippen bestätigen",
-  connection_entity: "Verbindung (Binärsensor)",
-  mode_entity: "Verbindungsmodus",
-  channel_entity: "Firmware-Kanal",
-  zigbee_type_entity: "Funkstandard (Zigbee-Typ)",
-  core_update_entity: "Core: Update",
-  core_restart_entity: "Core: Neustart-Button",
-  zigbee_update_entity: "Zigbee: Update",
-  zigbee_restart_entity: "Zigbee: Neustart-Button",
-  zwave_update_entity: "Z-Wave: Update",
-  zwave_restart_entity: "Z-Wave: Neustart-Button",
+// Language: German when Home Assistant uses German, otherwise English.
+const SLZB_I18N={
+  "en": {
+    "l_title": "Title",
+    "l_subtitle": "Subtitle",
+    "l_show_image": "Show device image",
+    "l_image_url": "Custom image URL (empty = bundled image)",
+    "l_image_mode": "Image position",
+    "l_image_opacity": "Image opacity (background only)",
+    "l_confirm_actions": "Confirm restart with a second tap",
+    "l_connection_entity": "Connection (binary sensor)",
+    "l_mode_entity": "Connection mode",
+    "l_channel_entity": "Firmware channel",
+    "l_zigbee_type_entity": "Radio protocol (Zigbee type)",
+    "l_core_update_entity": "Core: update",
+    "l_core_restart_entity": "Core: restart button",
+    "l_zigbee_update_entity": "Zigbee: update",
+    "l_zigbee_restart_entity": "Zigbee: restart button",
+    "l_zwave_update_entity": "Z-Wave: update",
+    "l_zwave_restart_entity": "Z-Wave: restart button",
+    "s_general": "General",
+    "s_connection": "Connection",
+    "s_firmware": "Firmware & restart",
+    "o_background": "Background (top right)",
+    "o_inline": "Next to title",
+    "not_found": "not found",
+    "unavailable": "unavailable",
+    "installing": "Installing …",
+    "installing_pct": "Installing {p} %",
+    "update_available": "Update available",
+    "up_to_date": "Up to date",
+    "restart_title": "Restart {label}",
+    "restart": "Restart",
+    "tap_again": "Tap again",
+    "sent": "Sent",
+    "connection": "Connection",
+    "mode": "Mode",
+    "channel": "Firmware channel",
+    "radio": "Radio protocol",
+    "description": "Overview for the SMLIGHT SLZB-MRW10U (connection, firmware, restart)"
+  },
+  "de": {
+    "l_title": "Titel",
+    "l_subtitle": "Untertitel",
+    "l_show_image": "Gerätebild anzeigen",
+    "l_image_url": "Eigene Bild-URL (leer = mitgeliefertes Bild)",
+    "l_image_mode": "Bildposition",
+    "l_image_opacity": "Bild-Deckkraft (nur Hintergrund)",
+    "l_confirm_actions": "Neustart mit zweitem Tippen bestätigen",
+    "l_connection_entity": "Verbindung (Binärsensor)",
+    "l_mode_entity": "Verbindungsmodus",
+    "l_channel_entity": "Firmware-Kanal",
+    "l_zigbee_type_entity": "Funkstandard (Zigbee-Typ)",
+    "l_core_update_entity": "Core: Update",
+    "l_core_restart_entity": "Core: Neustart-Button",
+    "l_zigbee_update_entity": "Zigbee: Update",
+    "l_zigbee_restart_entity": "Zigbee: Neustart-Button",
+    "l_zwave_update_entity": "Z-Wave: Update",
+    "l_zwave_restart_entity": "Z-Wave: Neustart-Button",
+    "s_general": "Allgemein",
+    "s_connection": "Verbindung",
+    "s_firmware": "Firmware & Neustart",
+    "o_background": "Hintergrund (oben rechts)",
+    "o_inline": "Neben dem Titel",
+    "not_found": "nicht gefunden",
+    "unavailable": "nicht verfügbar",
+    "installing": "Installiert …",
+    "installing_pct": "Installiert {p} %",
+    "update_available": "Update verfügbar",
+    "up_to_date": "Aktuell",
+    "restart_title": "{label} neu starten",
+    "restart": "Neustart",
+    "tap_again": "Nochmal tippen",
+    "sent": "Gesendet",
+    "connection": "Verbindung",
+    "mode": "Modus",
+    "channel": "Firmware-Kanal",
+    "radio": "Funkstandard",
+    "description": "Übersicht für den SMLIGHT SLZB-MRW10U (Verbindung, Firmware, Neustart)"
+  }
 };
+const SLZBLang=(hass)=>String(hass?.locale?.language||hass?.language||globalThis.document?.querySelector?.("home-assistant")?.hass?.locale?.language||globalThis.document?.documentElement?.lang||globalThis.navigator?.language||"en").toLowerCase().startsWith("de")?"de":"en";
+const SLZBT=(hass)=>SLZB_I18N[SLZBLang(hass)];
 
 const slzbEsc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -81,13 +145,14 @@ class SlzbCard extends HTMLElement {
   }
 
   static getConfigForm() {
+    const T = SLZBT();
     const ent = (name, domain) => ({ name, selector: { entity: { domain } } });
     return {
       schema: [
         {
           type: "expandable",
           name: "",
-          title: "Allgemein",
+          title: T.s_general,
           schema: [
             { name: "title", selector: { text: {} } },
             { name: "subtitle", selector: { text: {} } },
@@ -98,8 +163,8 @@ class SlzbCard extends HTMLElement {
                 select: {
                   mode: "dropdown",
                   options: [
-                    { value: "background", label: "Hintergrund (oben rechts)" },
-                    { value: "inline", label: "Neben dem Titel" },
+                    { value: "background", label: T.o_background },
+                    { value: "inline", label: T.o_inline },
                   ],
                 },
               },
@@ -112,7 +177,7 @@ class SlzbCard extends HTMLElement {
         {
           type: "expandable",
           name: "",
-          title: "Verbindung",
+          title: T.s_connection,
           schema: [
             ent("connection_entity", "binary_sensor"),
             ent("mode_entity", "sensor"),
@@ -123,7 +188,7 @@ class SlzbCard extends HTMLElement {
         {
           type: "expandable",
           name: "",
-          title: "Firmware & Neustart",
+          title: T.s_firmware,
           schema: [
             ent("core_update_entity", "update"),
             ent("core_restart_entity", "button"),
@@ -134,7 +199,7 @@ class SlzbCard extends HTMLElement {
           ],
         },
       ],
-      computeLabel: (schema) => SLZB_LABELS[schema.name] || schema.name,
+      computeLabel: (schema) => T[`l_${schema.name}`] || schema.name,
     };
   }
 
@@ -181,6 +246,7 @@ class SlzbCard extends HTMLElement {
   _update() {
     if (!this._hass) return;
     const sig = JSON.stringify([
+      SLZBLang(this._hass),
       this._config,
       this._entityIds().map((id) => {
         const s = this._state(id);
@@ -196,7 +262,7 @@ class SlzbCard extends HTMLElement {
 
   _tile(label, id, icon, kind) {
     const st = this._state(id);
-    const value = st ? this._fmt(st) : "nicht gefunden";
+    const value = st ? this._fmt(st) : SLZBT(this._hass).not_found;
     let tone = "";
     if (!st) tone = "off";
     else if (slzbUnavailable(st)) tone = "warn";
@@ -212,21 +278,22 @@ class SlzbCard extends HTMLElement {
     const up = this._state(updId);
     const btn = this._state(btnId);
     let tone = "off";
-    let status = "nicht gefunden";
+    const T = SLZBT(this._hass);
+    let status = T.not_found;
     if (up) {
       const a = up.attributes || {};
       if (slzbUnavailable(up)) {
         tone = "warn";
-        status = "nicht verfügbar";
+        status = T.unavailable;
       } else if (a.in_progress) {
         tone = "warn";
-        status = a.update_percentage != null ? `Installiert ${Math.round(a.update_percentage)} %` : "Installiert …";
+        status = a.update_percentage != null ? T.installing_pct.replace("{p}", Math.round(a.update_percentage)) : T.installing;
       } else if (up.state === "on") {
         tone = "warn";
-        status = "Update verfügbar";
+        status = T.update_available;
       } else {
         tone = "ok";
-        status = "Aktuell";
+        status = T.up_to_date;
       }
     }
     const disabled = !btn || btn.state === "unavailable" ? "disabled" : "";
@@ -239,14 +306,15 @@ class SlzbCard extends HTMLElement {
             <span class="val">${slzbEsc(status)}</span>
           </span>
         </button>
-        <button class="restart" data-press="${slzbEsc(btnId)}" ${disabled} title="${slzbEsc(label)} neu starten">
-          <ha-icon icon="mdi:restart"></ha-icon><span class="rl">Neustart</span>
+        <button class="restart" data-press="${slzbEsc(btnId)}" ${disabled} title="${slzbEsc(T.restart_title.replace("{label}", label))}">
+          <ha-icon icon="mdi:restart"></ha-icon><span class="rl">${T.restart}</span>
         </button>
       </div>`;
   }
 
   _render() {
     const c = this._config;
+    const T = SLZBT(this._hass);
     const radio = this._state(c.zigbee_type_entity);
     const radioLabel = radio && !slzbUnavailable(radio) ? this._fmt(radio) : "Zigbee";
     const inline = c.image_mode !== "background";
@@ -272,13 +340,13 @@ class SlzbCard extends HTMLElement {
           </div>
 
           <div class="tiles">
-            ${this._tile("Verbindung", c.connection_entity, "mdi:lan-connect", "connection")}
-            ${this._tile("Modus", c.mode_entity, "mdi:connection")}
-            ${this._tile("Firmware-Kanal", c.channel_entity, "mdi:update")}
-            ${this._tile("Funkstandard", c.zigbee_type_entity, "mdi:zigbee")}
+            ${this._tile(T.connection, c.connection_entity, "mdi:lan-connect", "connection")}
+            ${this._tile(T.mode, c.mode_entity, "mdi:connection")}
+            ${this._tile(T.channel, c.channel_entity, "mdi:update")}
+            ${this._tile(T.radio, c.zigbee_type_entity, "mdi:zigbee")}
           </div>
 
-          <div class="sec"><ha-icon icon="mdi:cog-refresh-outline"></ha-icon><span>Firmware &amp; Neustart</span></div>
+          <div class="sec"><ha-icon icon="mdi:cog-refresh-outline"></ha-icon><span>${slzbEsc(T.s_firmware)}</span></div>
           <div class="fws">
             ${this._fwRow("Core", "mdi:chip", c.core_update_entity, c.core_restart_entity)}
             ${this._fwRow(radioLabel, "mdi:zigbee", c.zigbee_update_entity, c.zigbee_restart_entity)}
@@ -314,14 +382,15 @@ class SlzbCard extends HTMLElement {
     const id = btn.dataset.press;
     if (!id || btn.disabled || !this._hass) return;
     const label = btn.querySelector(".rl");
+    const T = SLZBT(this._hass);
     const reset = () => {
       btn.classList.remove("arm", "sent");
-      label.textContent = "Neustart";
+      label.textContent = T.restart;
     };
 
     if (this._config.confirm_actions !== false && !btn.classList.contains("arm")) {
       btn.classList.add("arm");
-      label.textContent = "Nochmal tippen";
+      label.textContent = T.tap_again;
       clearTimeout(btn._t);
       btn._t = setTimeout(reset, 4000);
       return;
@@ -330,7 +399,7 @@ class SlzbCard extends HTMLElement {
     clearTimeout(btn._t);
     btn.classList.remove("arm");
     btn.classList.add("sent");
-    label.textContent = "Gesendet";
+    label.textContent = T.sent;
     this._hass.callService(id.split(".")[0], "press", { entity_id: id });
     btn._t = setTimeout(reset, 2500);
   }
@@ -464,7 +533,7 @@ if (!window.customCards.some((c) => c.type === "slzb-card")) {
   window.customCards.push({
     type: "slzb-card",
     name: "SLZB Card",
-    description: "Übersicht für den SMLIGHT SLZB-MRW10U (Verbindung, Firmware, Neustart)",
+    description: SLZBT().description,
     preview: false,
   });
 }
