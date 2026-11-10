@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.2.0 - 2026-11-10
+
+- New look in line with the NAS, Eaton UPS and TouchKio cards: tinted icons, larger title, firmware rows with version number and a status pill ("Up to date", "Update" with the new version, progress in percent with a bar while installing). / Neues Aussehen passend zu NAS-, Eaton-UPS- und TouchKio-Card: getönte Symbole, größerer Titel, Firmware-Zeilen mit Versionsnummer und Status-Pill („Aktuell", „Update" mit der neuen Version, Fortschritt in Prozent mit Balken während der Installation).
+- The card is built once and then only swaps the values that changed. "Tap again" on a restart button and the keyboard focus now survive incoming values, and the device image is no longer reloaded. / Die Karte wird einmal aufgebaut und tauscht danach nur geänderte Werte. „Nochmal tippen" am Neustart-Button und der Tastaturfokus überstehen jetzt eintreffende Werte, das Gerätebild wird nicht mehr neu geladen.
+- Text and spacing grow with the card width (phone, tablet, kiosk); a few pixels of width change no longer make the size flip. / Schrift und Abstände wachsen mit der Kartenbreite (Handy, Tablet, Kiosk); wenige Pixel Breitenänderung lassen die Größe nicht mehr kippen.
+- The fixed minimum height of 500 px is gone; the card reports the height it needs to the Sections dashboard. / Die feste Mindesthöhe von 500 px entfällt; die Karte meldet dem Sections-Dashboard die benötigte Höhe.
+- The background image stays in the header area and no longer covers tiles on wide cards. / Das Hintergrundbild bleibt im Kopfbereich und überdeckt auf breiten Karten keine Kacheln mehr.
+- Visible focus outline and press feedback on all buttons; no blur effects (easier on a Raspberry Pi kiosk); respects "reduce motion". / Sichtbarer Fokusrahmen und Rückmeldung beim Antippen auf allen Schaltflächen; keine Blur-Effekte (schont einen Raspberry-Pi-Kiosk); beachtet „Bewegung reduzieren".
+- Card type, options and entities are unchanged; no dashboard changes needed. / Kartentyp, Optionen und Entitäten bleiben unverändert; am Dashboard ist nichts anzupassen.
+- Browser tests added (no rebuild on value changes, confirmation, layout at several widths). / Browser-Tests ergänzt (kein Neuaufbau bei Wertänderungen, Bestätigung, Layout in mehreren Breiten).
+
 ## 2.1.0 - 2026-11-04
 
 - The card and its editor now appear in English by default and in German when Home Assistant is set to German. / Karte und Editor erscheinen jetzt standardmäßig auf Englisch und auf Deutsch, wenn Home Assistant auf Deutsch eingestellt ist.
