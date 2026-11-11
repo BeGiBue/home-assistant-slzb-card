@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.2.0 - 2026-11-10
+## 2.2.0 - 2026-11-11
 
 - New look in line with the NAS, Eaton UPS and TouchKio cards: tinted icons, larger title, firmware rows with version number and a status pill ("Up to date", "Update" with the new version, progress in percent with a bar while installing). / Neues Aussehen passend zu NAS-, Eaton-UPS- und TouchKio-Card: getönte Symbole, größerer Titel, Firmware-Zeilen mit Versionsnummer und Status-Pill („Aktuell", „Update" mit der neuen Version, Fortschritt in Prozent mit Balken während der Installation).
 - The card is built once and then only swaps the values that changed. "Tap again" on a restart button and the keyboard focus now survive incoming values, and the device image is no longer reloaded. / Die Karte wird einmal aufgebaut und tauscht danach nur geänderte Werte. „Nochmal tippen" am Neustart-Button und der Tastaturfokus überstehen jetzt eintreffende Werte, das Gerätebild wird nicht mehr neu geladen.
@@ -8,6 +8,7 @@
 - The fixed minimum height of 500 px is gone; the card reports the height it needs to the Sections dashboard. / Die feste Mindesthöhe von 500 px entfällt; die Karte meldet dem Sections-Dashboard die benötigte Höhe.
 - The background image stays in the header area and no longer covers tiles on wide cards. / Das Hintergrundbild bleibt im Kopfbereich und überdeckt auf breiten Karten keine Kacheln mehr.
 - Visible focus outline and press feedback on all buttons; no blur effects (easier on a Raspberry Pi kiosk); respects "reduce motion". / Sichtbarer Fokusrahmen und Rückmeldung beim Antippen auf allen Schaltflächen; keine Blur-Effekte (schont einen Raspberry-Pi-Kiosk); beachtet „Bewegung reduzieren".
+- Fixed: tapping a restart button again while it shows "Sent" could trigger a second restart. / Behoben: Erneutes Tippen auf einen Neustart-Button, während er „Gesendet" zeigt, konnte einen zweiten Neustart auslösen.
 - Card type, options and entities are unchanged; no dashboard changes needed. / Kartentyp, Optionen und Entitäten bleiben unverändert; am Dashboard ist nichts anzupassen.
 - Browser tests added (no rebuild on value changes, confirmation, layout at several widths). / Browser-Tests ergänzt (kein Neuaufbau bei Wertänderungen, Bestätigung, Layout in mehreren Breiten).
 

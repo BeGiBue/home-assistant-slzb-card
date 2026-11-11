@@ -217,14 +217,19 @@ class SlzbCard extends HTMLElement {
   // Sections-Dashboard: Höhe ergibt sich aus dem Inhalt; min_rows verhindert, dass im Layout-Editor
   // weniger Zeilen eingestellt werden, als der Inhalt braucht (sonst ragt die Card in die nächste hinein)
   getGridOptions() {
-    return { columns: 12, min_columns: 6, min_rows: this._minRows || 7 };
+    return { columns: 12, min_columns: 6, min_rows: this._minRows || 8 };
   }
 
   connectedCallback() {
     if (!this._ro && typeof ResizeObserver !== "undefined") {
+      // Im nächsten Bild statt direkt im Callback: Die Schriftstufe ändert die Höhe der Card, und eine Größenänderung
+      // innerhalb des Callbacks meldet der Browser als Fehler ("ResizeObserver loop …")
       this._ro = new ResizeObserver(() => {
-        this._applyTier();
-        this._measure();
+        cancelAnimationFrame(this._raf);
+        this._raf = requestAnimationFrame(() => {
+          this._applyTier();
+          this._measure();
+        });
       });
     }
     this._ro?.observe(this);
@@ -234,6 +239,7 @@ class SlzbCard extends HTMLElement {
 
   disconnectedCallback() {
     this._ro?.disconnect();
+    cancelAnimationFrame(this._raf);
   }
 
   // Schriftstufe nach Breite (14/15/17/19/22 px ab 0/400/600/800/1000 px) mit ±12 px Hysterese: Ändert eine
@@ -340,7 +346,7 @@ class SlzbCard extends HTMLElement {
         tone = "warning";
         const p = Number(a.update_percentage);
         const known = a.update_percentage != null && Number.isFinite(p);
-        status = known ? `${Math.round(p)} %` : T.installing;
+        status = known ? `${Math.round(Math.max(0, Math.min(100, p)))} %` : T.installing;
         sub = lv ? `→ ${lv}` : "";
         bar = `<i class="bar"><u style="width:${known ? Math.max(0, Math.min(100, p)) : 0}%"></u></i>`;
       } else if (up.state === "on") {
@@ -483,7 +489,8 @@ class SlzbCard extends HTMLElement {
 
   _press(btn) {
     const id = btn.dataset.press;
-    if (!id || btn.disabled || !this._hass) return;
+    // Während "Gesendet" angezeigt wird, zählt ein weiteres Tippen nicht (sonst stünde "Nochmal tippen" in Grün da)
+    if (!id || btn.disabled || !this._hass || btn.classList.contains("sent")) return;
     const label = btn.querySelector(".rl");
     const T = SLZBT(this._hass);
     const reset = () => {
@@ -504,7 +511,8 @@ class SlzbCard extends HTMLElement {
     btn.classList.remove("arm");
     btn.classList.add("sent");
     label.textContent = T.sent;
-    this._hass.callService(id.split(".")[0], "press", { entity_id: id });
+    // Einen fehlgeschlagenen Aufruf meldet Home Assistant selbst; hier nur die unbehandelte Ablehnung vermeiden
+    Promise.resolve(this._hass.callService(id.split(".")[0], "press", { entity_id: id })).catch(() => {});
     btn._t = setTimeout(reset, 2500);
   }
 
@@ -587,12 +595,13 @@ class SlzbCard extends HTMLElement {
       .fws { display: grid; gap: .6em; }
       .fw { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .6em; }
       .fwmain { min-width: 0; min-height: 4.2em; display: flex; align-items: center; gap: .7em; padding: .6em .8em; }
+      .fwmain .at { min-width: 3.8em; }
       .pill {
-        flex: none; display: inline-flex; align-items: center; gap: .5em; min-height: 2em; padding: .15em .8em .15em .6em; border-radius: 999px;
+        flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: .5em; min-height: 2em; padding: .15em .8em .15em .6em; border-radius: 999px;
         background: color-mix(in srgb, var(--t) 16%, transparent); border: 1px solid color-mix(in srgb, var(--t) 40%, transparent);
       }
-      .pill b { font-weight: 600; font-size: .9em; white-space: nowrap; font-variant-numeric: tabular-nums; }
-      .dot { width: .6em; height: .6em; border-radius: 50%; background: var(--t); box-shadow: 0 0 .55em .05em color-mix(in srgb, var(--t) 70%, transparent); }
+      .pill b { min-width: 0; font-weight: 600; font-size: .9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+      .dot { flex: none; width: .6em; height: .6em; border-radius: 50%; background: var(--t); box-shadow: 0 0 .55em .05em color-mix(in srgb, var(--t) 70%, transparent); }
       .bar { display: block; height: .3em; border-radius: .2em; margin-top: .25em; background: var(--line); overflow: hidden; }
       .bar u { display: block; height: 100%; border-radius: inherit; background: var(--t); text-decoration: none; }
       .restart {
@@ -609,6 +618,8 @@ class SlzbCard extends HTMLElement {
       .slim main { padding: 12px; }
       .slim .pill { gap: .35em; padding: .1em .6em .1em .45em; }
       .slim .restart { min-width: 4.8em; }
+      .slim .fwmain { gap: .5em; padding: .6em; }
+      .slim .fwmain > .chip { display: none; }
       @media (prefers-reduced-motion: reduce) {
         .restart { transition: none; }
         .tile:active, .fwmain:active, .restart:active { transform: none; }

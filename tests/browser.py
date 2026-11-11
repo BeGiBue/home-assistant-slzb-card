@@ -20,6 +20,9 @@ body{margin:0;padding:14px;background:#e9edf1;font-family:Roboto,Inter,sans-seri
 --primary-text-color:#141414;--secondary-text-color:#6b6f76;--primary-color:#009ac7;--success-color:#43a047;
 --warning-color:#ff9800;--error-color:#e53935;--card-background-color:#fff}
 </style><div id="w"></div><script>
+window.__errors = [];
+window.addEventListener('error', (e) => window.__errors.push(String(e.message || e)));
+window.addEventListener('unhandledrejection', (e) => window.__errors.push('rejection: ' + e.reason));
 customElements.define('ha-card',class extends HTMLElement{constructor(){super();this.attachShadow({mode:'open'}).innerHTML=
   '<style>:host{display:block;background:#fff;border-radius:16px;border:1px solid #dfe3e8;box-sizing:border-box}</style><slot></slot>'}});
 customElements.define('ha-icon',class extends HTMLElement{connectedCallback(){(this.shadowRoot||this.attachShadow({mode:'open'})).innerHTML=
@@ -57,6 +60,7 @@ async () => {
     return {card, calls, set: (s) => { card.hass = mk(s); }};
   };
   const q = (card, sel) => card.shadowRoot.querySelector(sel);
+  const qa = (card, sel) => [...card.shadowRoot.querySelectorAll(sel)];
   const text = (card, sel) => q(card, sel)?.textContent.replace(/\s+/g, ' ').trim();
   const clean = (root) => !root.querySelector('#injected, script') && !window.__injected &&
     ![...root.querySelectorAll('*')].some((el) => [...el.attributes].some((a) => /^on/i.test(a.name)));
@@ -211,6 +215,37 @@ async () => {
     check('Hysterese: ±12 px um die Schwelle kippen die Schriftstufe nicht (' + seen.join(' ') + ')',
       seen.join() === ['14px', '14px', '14px', '14px', '15px', '15px', '14px'].join());
   }
+  // Lange Status-Texte bei schmaler Card: Die Namen der Firmware-Zeilen bleiben lesbar, die Pill gibt nach
+  for (const language of ['de', 'en']) for (const width of [280, 292, 304, 320, 335, 350]) {
+    const s = baseStates();
+    s['update.slzb_mrw10u_core_firmware'] = st('unavailable');
+    delete s['update.slzb_mrw10u_z_wave_firmware'];
+    s['update.slzb_mrw10u_zigbee_firmware'] = st('on', {installed_version: '20250321', latest_version: '20250623-beta.12345'});
+    const {card} = fixture({width, language, states: s});
+    await frames();
+    const names = qa(card, '.fwmain .at > b'), hc = q(card, 'ha-card').getBoundingClientRect();
+    const full = names.every((el) => el.scrollWidth <= el.clientWidth + 1 && el.clientWidth > 20);
+    const inside = qa(card, '.pill, .fwmain, .restart').every((el) => { const r = el.getBoundingClientRect(); return r.right <= hc.right + .5; }) &&
+      qa(card, '.fwmain').every((row) => row.querySelector('.pill').getBoundingClientRect().right <= row.getBoundingClientRect().right + .5);
+    check(width + ' px (' + language + '): Firmware-Namen vollständig trotz langer Status-Texte, Pill bleibt in der Zeile', full && inside);
+  }
+  {
+    const s = baseStates();
+    s['update.slzb_mrw10u_zigbee_firmware'] = st('on', {in_progress: true, update_percentage: 150});
+    const {card, calls} = fixture({states: s, config: {confirm_actions: false}});
+    check('Fortschritt über 100 % wird begrenzt', text(card, '[data-part="f-zigbee"] .pill') === '100 %');
+    const btn = q(card, '[data-part="r-core"]');
+    btn.click();
+    btn.click();
+    check('Tippen während „Gesendet" löst keinen zweiten Neustart aus', calls.length === 1 && btn.classList.contains('sent') && !btn.classList.contains('arm'));
+    const {card: c2} = fixture({config: {confirm_actions: false}});
+    c2.hass = {...c2.hass, states: baseStates(), language: 'de', callService: () => Promise.reject(new Error('x'))};
+    q(c2, '[data-part="r-core"]').click();
+    await turn(20);
+    check('Abgelehnter Dienstaufruf bleibt ohne unbehandelten Fehler', !window.__errors.some((e) => /rejection/.test(e)));
+    const fresh = document.createElement('slzb-card');
+    check('Mindesthöhe vor der ersten Messung reicht für den Inhalt (8 Zeilen)', fresh.getGridOptions().min_rows === 8);
+  }
   // Nachgebildete Scrollleiste: Ist die Card höher als H, wird ihr Platz 15 px schmaler (wie bei einer
   // einblendenden Scrollleiste). Um jede Layout-Schwelle darf die Breite danach nicht dauerhaft hin- und herkippen.
   for (const T of [330, 400, 600, 800, 1000]) {
@@ -254,6 +289,8 @@ async () => {
     const grid = card.getGridOptions();
     check('Sections-Raster: volle Breite, mindestens 6 Spalten', grid.columns === 12 && grid.min_columns === 6 && !('rows' in grid));
   }
+  await frames();
+  check('Keine Fehlermeldungen des Browsers, auch kein „ResizeObserver loop" (' + window.__errors.length + ')', window.__errors.length === 0);
   return results;
 }
 """
