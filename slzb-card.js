@@ -254,6 +254,10 @@ class SlzbCard extends HTMLElement {
       this._tier = t;
       this.style.setProperty("--fs", S[t] + "px");
     }
+    // Schmales Layout (bis 330 px) ebenfalls mit Hysterese statt per Container-Abfrage: Es ändert die Höhe,
+    // und eine dadurch ein- und ausblendende Scrollleiste würde die Breite sonst endlos um die Schwelle kippen
+    this._slim = this._slim === undefined ? w <= 330 : this._slim ? w <= 330 + H : w <= 330 - H;
+    this.shadowRoot.querySelector("ha-card")?.classList.toggle("slim", this._slim);
   }
 
   // Natürliche Inhaltshöhe in Grid-Zeilen umrechnen (HA: 56 px Zeile + 8 px Abstand)
@@ -601,12 +605,10 @@ class SlzbCard extends HTMLElement {
       .restart.arm { background: color-mix(in srgb, var(--err) 18%, transparent); border-color: var(--err); color: var(--err); }
       .restart.sent { background: color-mix(in srgb, var(--ok) 18%, transparent); border-color: var(--ok); color: var(--ok); }
 
-      /* sehr schmal: Pill enger, damit Name und Version lesbar bleiben */
-      @container (max-width: 330px) {
-        main { padding: 12px; }
-        .pill { gap: .35em; padding: .1em .6em .1em .45em; }
-        .restart { min-width: 4.8em; }
-      }
+      /* sehr schmal (Klasse setzt _applyTier() mit Hysterese): Pill enger, damit Name und Version lesbar bleiben */
+      .slim main { padding: 12px; }
+      .slim .pill { gap: .35em; padding: .1em .6em .1em .45em; }
+      .slim .restart { min-width: 4.8em; }
       @media (prefers-reduced-motion: reduce) {
         .restart { transition: none; }
         .tile:active, .fwmain:active, .restart:active { transform: none; }

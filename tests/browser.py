@@ -211,6 +211,41 @@ async () => {
     check('Hysterese: ±12 px um die Schwelle kippen die Schriftstufe nicht (' + seen.join(' ') + ')',
       seen.join() === ['14px', '14px', '14px', '14px', '15px', '15px', '14px'].join());
   }
+  // Nachgebildete Scrollleiste: Ist die Card höher als H, wird ihr Platz 15 px schmaler (wie bei einer
+  // einblendenden Scrollleiste). Um jede Layout-Schwelle darf die Breite danach nicht dauerhaft hin- und herkippen.
+  for (const T of [330, 400, 600, 800, 1000]) {
+    const host = document.getElementById('w');
+    host.replaceChildren();
+    host.style.width = 'auto';
+    const hass = {states: baseStates(), language: 'de', locale: {language: 'de'}, callService() {}};
+    const mk = (W) => {
+      const box = document.createElement('div'); box.style.width = W + 'px';
+      const c = document.createElement('slzb-card'); c.setConfig({}); box.appendChild(c); host.appendChild(box); c.hass = hass;
+      return {box, c};
+    };
+    const probe = [T - 20, T + 20].map(mk);
+    await frames();
+    const hs = probe.map((p) => p.c.offsetHeight), lo = Math.min(...hs) - 3, hi = Math.max(...hs) + 3;
+    host.replaceChildren();
+    const cards = [];
+    for (let W = T - 14; W <= T + 30; W += 2) for (let H = lo; H <= hi; H += Math.max(2, Math.ceil((hi - lo) / 6))) cards.push({...mk(W), W, H, cur: W, n: 0});
+    await frames();
+    for (let f = 0; f < 60; f++) {
+      const now = cards.map((o) => o.c.offsetHeight);
+      cards.forEach((o, i) => { const want = o.W - (now[i] > o.H ? 15 : 0); if (want !== o.cur) { o.cur = want; o.box.style.width = want + 'px'; o.n++; } });
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    const worst = Math.max(...cards.map((o) => o.n));
+    check('Scrollleiste um ' + T + ' px: Breite pendelt sich ein (höchstens ' + worst + ' Wechsel in 60 Bildern)', worst <= 4);
+  }
+  {
+    const {card} = fixture({width: 325});
+    await frames();
+    const w = document.getElementById('w'), slim = () => (q(card, 'ha-card').classList.contains('slim') ? 's' : 'n');
+    const seen = [slim()];
+    for (const px of [335, 325, 339, 344, 322, 316]) { w.style.width = px + 'px'; await frames(); await frames(); seen.push(slim()); }
+    check('Hysterese um 330 px: ±12 px kippen das schmale Layout nicht (' + seen.join(' ') + ')', seen.join() === ['s', 's', 's', 's', 'n', 'n', 's'].join());
+  }
   {
     const {card} = fixture({width: 350});
     const first = q(card, '.tile');
