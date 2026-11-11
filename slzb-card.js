@@ -1,11 +1,11 @@
 /*
  * SLZB Card – Übersichtskarte für den SMLIGHT SLZB-MRW10U (Zigbee / Z-Wave / Thread, PoE)
- * Version 2.1.0
+ * Version 2.2.0
  * Ein einzelnes JavaScript-File, kein Build nötig. Stil angelehnt an die NAS-Card,
  * der Code ist komplett eigenständig geschrieben.
  */
 
-const SLZB_VERSION = "2.1.0";
+const SLZB_VERSION = "2.2.0";
 
 const SLZB_DEFAULTS = {
   title: "SLZB-MRW10U",
@@ -55,8 +55,8 @@ const SLZB_I18N={
     "not_found": "not found",
     "unavailable": "unavailable",
     "installing": "Installing …",
-    "installing_pct": "Installing {p} %",
     "update_available": "Update available",
+    "update": "Update",
     "up_to_date": "Up to date",
     "restart_title": "Restart {label}",
     "restart": "Restart",
@@ -94,8 +94,8 @@ const SLZB_I18N={
     "not_found": "nicht gefunden",
     "unavailable": "nicht verfügbar",
     "installing": "Installiert …",
-    "installing_pct": "Installiert {p} %",
     "update_available": "Update verfügbar",
+    "update": "Update",
     "up_to_date": "Aktuell",
     "restart_title": "{label} neu starten",
     "restart": "Neustart",
@@ -125,6 +125,7 @@ class SlzbCard extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._config = { ...SLZB_DEFAULTS };
     this._sig = "";
+    this._parts = {};
   }
 
   /* ---------- Home-Assistant-Schnittstelle ---------- */
@@ -138,6 +139,10 @@ class SlzbCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._update();
+  }
+
+  get hass() {
+    return this._hass;
   }
 
   static getStubConfig() {
@@ -203,17 +208,72 @@ class SlzbCard extends HTMLElement {
     };
   }
 
+  // Masonry-Dashboard: ungefähre Höhe in Zeilen (je ca. 50 px)
   getCardSize() {
-    return 10;
+    const h = this.shadowRoot?.querySelector("ha-card")?.offsetHeight;
+    return h ? Math.ceil(h / 50) : 8;
   }
 
+  // Sections-Dashboard: Höhe ergibt sich aus dem Inhalt; min_rows verhindert, dass im Layout-Editor
+  // weniger Zeilen eingestellt werden, als der Inhalt braucht (sonst ragt die Card in die nächste hinein)
   getGridOptions() {
-    // Höhe nicht vorgeben: Home Assistant misst die (feste) Kartenhöhe selbst, so wird nie etwas abgeschnitten
-    return { columns: 12, min_columns: 6 };
+    return { columns: 12, min_columns: 6, min_rows: this._minRows || 8 };
   }
 
   connectedCallback() {
+    if (!this._ro && typeof ResizeObserver !== "undefined") {
+      // Im nächsten Bild statt direkt im Callback: Die Schriftstufe ändert die Höhe der Card, und eine Größenänderung
+      // innerhalb des Callbacks meldet der Browser als Fehler ("ResizeObserver loop …")
+      this._ro = new ResizeObserver(() => {
+        cancelAnimationFrame(this._raf);
+        this._raf = requestAnimationFrame(() => {
+          this._applyTier();
+          this._measure();
+        });
+      });
+    }
+    this._ro?.observe(this);
+    this._applyTier();
     this._update();
+  }
+
+  disconnectedCallback() {
+    this._ro?.disconnect();
+    cancelAnimationFrame(this._raf);
+  }
+
+  // Schriftstufe nach Breite (14/15/17/19/22 px ab 0/400/600/800/1000 px) mit ±12 px Hysterese: Ändert eine
+  // ein- und ausblendende Scrollleiste die Breite um wenige Pixel, kippt die Stufe nicht hin und her
+  _applyTier() {
+    const w = this.clientWidth;
+    if (!w) return;
+    const T = [0, 400, 600, 800, 1000], S = [14, 15, 17, 19, 22], H = 12;
+    let t = this._tier;
+    if (t === undefined) {
+      t = 0;
+      for (let i = 1; i < T.length; i++) if (w >= T[i]) t = i;
+    } else {
+      while (t < T.length - 1 && w >= T[t + 1] + H) t++;
+      while (t > 0 && w < T[t] - H) t--;
+    }
+    if (t !== this._tier) {
+      this._tier = t;
+      this.style.setProperty("--fs", S[t] + "px");
+    }
+    // Schmales Layout (bis 330 px) ebenfalls mit Hysterese statt per Container-Abfrage: Es ändert die Höhe,
+    // und eine dadurch ein- und ausblendende Scrollleiste würde die Breite sonst endlos um die Schwelle kippen
+    this._slim = this._slim === undefined ? w <= 330 : this._slim ? w <= 330 + H : w <= 330 - H;
+    this.shadowRoot.querySelector("ha-card")?.classList.toggle("slim", this._slim);
+  }
+
+  // Natürliche Inhaltshöhe in Grid-Zeilen umrechnen (HA: 56 px Zeile + 8 px Abstand)
+  _measure() {
+    const card = this.shadowRoot?.querySelector("ha-card"), main = card?.querySelector("main");
+    if (!main || !this.clientWidth) return;
+    const cs = getComputedStyle(card), hs = getComputedStyle(this);
+    const h = main.offsetHeight + (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+    const rh = parseFloat(hs.getPropertyValue("--row-height")) || 56, gap = parseFloat(hs.getPropertyValue("--row-gap")) || 8;
+    this._minRows = Math.max(1, Math.ceil((h + gap) / (rh + gap)));
   }
 
   /* ---------- Hilfsfunktionen ---------- */
@@ -232,127 +292,174 @@ class SlzbCard extends HTMLElement {
     return unit ? `${st.state} ${unit}` : st.state;
   }
 
-  _icon(st, fallback) {
-    return st?.attributes?.icon || fallback;
+  _radioLabel() {
+    const radio = this._state(this._config.zigbee_type_entity);
+    return radio && !slzbUnavailable(radio) ? this._fmt(radio) : "Zigbee";
   }
 
-  _entityIds() {
-    return Object.keys(SLZB_DEFAULTS)
-      .filter((k) => k.endsWith("_entity"))
-      .map((k) => this._config[k])
-      .filter(Boolean);
+  /* ---------- Bausteine: je Baustein Klasse (Farbton) und Inhalt ---------- */
+
+  // [Schlüssel, Label-Schlüssel, Standard-Symbol, Art]
+  _tileDefs() {
+    return [
+      ["connection_entity", "connection", "mdi:lan-connect", "connection"],
+      ["mode_entity", "mode", "mdi:connection", ""],
+      ["channel_entity", "channel", "mdi:update", ""],
+      ["zigbee_type_entity", "radio", "mdi:zigbee", ""],
+    ];
   }
 
-  _update() {
-    if (!this._hass) return;
-    const sig = JSON.stringify([
-      SLZBLang(this._hass),
-      this._config,
-      this._entityIds().map((id) => {
-        const s = this._state(id);
-        return s ? [s.state, s.attributes.installed_version, s.attributes.latest_version, s.attributes.in_progress, s.attributes.update_percentage] : null;
-      }),
-    ]);
-    if (sig === this._sig) return;
-    this._sig = sig;
-    this._render();
+  // [Kürzel, Label, Symbol, Update-Schlüssel, Button-Schlüssel]
+  _fwDefs() {
+    return [
+      ["core", "Core", "mdi:chip", "core_update_entity", "core_restart_entity"],
+      ["zigbee", this._radioLabel(), "mdi:zigbee", "zigbee_update_entity", "zigbee_restart_entity"],
+      ["zwave", "Z-Wave", "mdi:z-wave", "zwave_update_entity", "zwave_restart_entity"],
+    ];
   }
 
-  /* ---------- Rendering ---------- */
-
-  _tile(label, id, icon, kind) {
-    const st = this._state(id);
-    const value = st ? this._fmt(st) : SLZBT(this._hass).not_found;
-    let tone = "";
-    if (!st) tone = "off";
-    else if (slzbUnavailable(st)) tone = "warn";
-    else if (kind === "connection") tone = st.state === "on" ? "ok" : "bad";
-    return `
-      <button class="tile ${tone}" data-more="${slzbEsc(id)}">
-        <span class="chip"><ha-icon icon="${slzbEsc(this._icon(st, icon))}"></ha-icon></span>
-        <span class="txt"><span class="lab">${slzbEsc(label)}</span><span class="val">${slzbEsc(value)}</span></span>
-      </button>`;
-  }
-
-  _fwRow(label, icon, updId, btnId) {
-    const up = this._state(updId);
-    const btn = this._state(btnId);
-    let tone = "off";
+  _tilePart(labelKey, id, icon, kind) {
     const T = SLZBT(this._hass);
-    let status = T.not_found;
+    const st = this._state(id);
+    const value = st ? this._fmt(st) : T.not_found;
+    let tone = "primary";
+    if (!st) tone = "neutral";
+    else if (slzbUnavailable(st)) tone = "warning";
+    else if (kind === "connection") tone = st.state === "on" ? "success" : "error";
+    return {
+      cls: `tile tone-${tone}${kind === "connection" ? " conn" : ""}`,
+      html: `<span class="chip"><ha-icon icon="${slzbEsc(st?.attributes?.icon || icon)}"></ha-icon></span><span class="at"><small>${slzbEsc(T[labelKey])}</small><b>${slzbEsc(value)}</b></span>`,
+    };
+  }
+
+  _fwPart(label, icon, updId) {
+    const T = SLZBT(this._hass);
+    const up = this._state(updId);
+    let tone = "neutral", status = T.not_found, sub = "", bar = "";
     if (up) {
       const a = up.attributes || {};
+      const iv = a.installed_version, lv = a.latest_version;
       if (slzbUnavailable(up)) {
-        tone = "warn";
+        tone = "warning";
         status = T.unavailable;
       } else if (a.in_progress) {
-        tone = "warn";
-        status = a.update_percentage != null ? T.installing_pct.replace("{p}", Math.round(a.update_percentage)) : T.installing;
+        tone = "warning";
+        const p = Number(a.update_percentage);
+        const known = a.update_percentage != null && Number.isFinite(p);
+        status = known ? `${Math.round(Math.max(0, Math.min(100, p)))} %` : T.installing;
+        sub = lv ? `→ ${lv}` : "";
+        bar = `<i class="bar"><u style="width:${known ? Math.max(0, Math.min(100, p)) : 0}%"></u></i>`;
       } else if (up.state === "on") {
-        tone = "warn";
-        status = T.update_available;
+        tone = "warning";
+        status = T.update;
+        sub = lv ? `→ ${lv}` : T.update_available;
       } else {
-        tone = "ok";
+        tone = "success";
         status = T.up_to_date;
+        sub = iv ? `${iv}` : "";
       }
     }
-    const disabled = !btn || btn.state === "unavailable" ? "disabled" : "";
-    return `
-      <div class="fw">
-        <button class="fwmain ${tone}" data-more="${slzbEsc(updId)}">
-          <span class="chip"><ha-icon icon="${slzbEsc(icon)}"></ha-icon></span>
-          <span class="txt">
-            <span class="lab">${slzbEsc(label)}</span>
-            <span class="val">${slzbEsc(status)}</span>
-          </span>
-        </button>
-        <button class="restart" data-press="${slzbEsc(btnId)}" ${disabled} title="${slzbEsc(T.restart_title.replace("{label}", label))}">
-          <ha-icon icon="mdi:restart"></ha-icon><span class="rl">${T.restart}</span>
-        </button>
-      </div>`;
+    return {
+      cls: `panel fwmain tone-${tone}`,
+      html: `<span class="chip"><ha-icon icon="${slzbEsc(icon)}"></ha-icon></span><span class="at"><b>${slzbEsc(label)}</b>${sub ? `<small>${slzbEsc(sub)}</small>` : ""}${bar}</span><span class="pill"><i class="dot"></i><b>${slzbEsc(status)}</b></span>`,
+    };
   }
 
-  _render() {
+  // Alle Bausteine mit ihrem aktuellen Stand; die Neustart-Buttons tragen nur "gesperrt" und den Hinweistext
+  _computeParts() {
+    const c = this._config, T = SLZBT(this._hass), parts = {};
+    this._tileDefs().forEach(([key, labelKey, icon, kind]) => {
+      parts[`t-${key}`] = this._tilePart(labelKey, c[key], icon, kind);
+    });
+    this._fwDefs().forEach(([k, label, icon, updKey, btnKey]) => {
+      parts[`f-${k}`] = this._fwPart(label, icon, c[updKey]);
+      const btn = this._state(c[btnKey]);
+      parts[`r-${k}`] = { disabled: !btn || btn.state === "unavailable", title: T.restart_title.replace("{label}", label) };
+    });
+    return parts;
+  }
+
+  /* ---------- Aufbau und Aktualisierung ---------- */
+
+  // Die Card wird nur einmal aufgebaut (und neu bei geänderter Konfiguration oder Sprache). Danach tauscht
+  // _update() nur den Inhalt der Bausteine, deren Stand sich geändert hat. Die Schaltflächen selbst bleiben
+  // bestehen: Fokus und ein laufendes "Nochmal tippen" überstehen eintreffende Werte.
+  _update() {
+    if (!this._hass) return;
+    const sig = JSON.stringify([SLZBLang(this._hass), this._config]);
+    const parts = this._computeParts();
+    if (sig !== this._sig) {
+      this._sig = sig;
+      this._parts = parts;
+      this._build(parts);
+      return;
+    }
+    let changed = false;
+    Object.keys(parts).forEach((key) => {
+      const now = parts[key], old = this._parts[key];
+      if (old && JSON.stringify(old) === JSON.stringify(now)) return;
+      const el = this.shadowRoot.querySelector(`[data-part="${key}"]`);
+      if (!el) return;
+      changed = true;
+      if (key.startsWith("r-")) {
+        el.disabled = now.disabled;
+        el.title = now.title;
+      } else {
+        el.className = now.cls;
+        el.innerHTML = now.html;
+      }
+    });
+    this._parts = parts;
+    if (changed) this._measure();
+  }
+
+  _build(parts) {
     const c = this._config;
     const T = SLZBT(this._hass);
-    const radio = this._state(c.zigbee_type_entity);
-    const radioLabel = radio && !slzbUnavailable(radio) ? this._fmt(radio) : "Zigbee";
     const inline = c.image_mode !== "background";
     const imgSrc = c.image_url || SLZB_IMAGE;
     const opacity = Math.min(1, Math.max(0.1, Number(c.image_opacity) || 0.55));
-    const wrap = inline ? `class="art"` : `class="bgimg" style="opacity:${opacity}"`;
-    const image = c.show_image === false ? "" : `<div ${wrap}><img data-fallback src="${slzbEsc(imgSrc)}" alt=""></div>`;
+    const img = `<img data-fallback src="${slzbEsc(imgSrc)}" alt="">`;
+    const show = c.show_image !== false;
+
+    const tiles = this._tileDefs()
+      .map(([key]) => {
+        const p = parts[`t-${key}`];
+        return `<button class="${p.cls}" data-part="t-${key}" data-more="${slzbEsc(c[key])}">${p.html}</button>`;
+      })
+      .join("");
+
+    const fws = this._fwDefs()
+      .map(([k, , , updKey, btnKey]) => {
+        const p = parts[`f-${k}`], r = parts[`r-${k}`];
+        return `<div class="fw">
+          <button class="${p.cls}" data-part="f-${k}" data-more="${slzbEsc(c[updKey])}">${p.html}</button>
+          <button class="panel restart" data-part="r-${k}" data-press="${slzbEsc(c[btnKey])}" ${r.disabled ? "disabled" : ""} title="${slzbEsc(r.title)}">
+            <ha-icon icon="mdi:restart"></ha-icon><span class="rl">${slzbEsc(T.restart)}</span>
+          </button>
+        </div>`;
+      })
+      .join("");
 
     this.shadowRoot.innerHTML = `
       <style>${SlzbCard.css}</style>
       <ha-card>
-        <div class="main">
-          ${inline ? "" : image}
-          <div class="top ${inline ? "inline" : ""}">
+        ${show && !inline ? `<div class="bgimg" style="opacity:${opacity}">${img}</div>` : ""}
+        <main>
+          <div class="top${show && inline ? " inline" : ""}">
             <div class="title">
-              <span class="bigchip"><ha-icon icon="mdi:access-point-network"></ha-icon></span>
+              <span class="chip big"><ha-icon icon="mdi:access-point-network"></ha-icon></span>
               <div class="tt">
                 <h1>${slzbEsc(c.title)}</h1>
                 <p>${slzbEsc(c.subtitle)}</p>
               </div>
             </div>
-            ${inline ? image : ""}
+            ${show && inline ? `<div class="art">${img}</div>` : ""}
           </div>
-
-          <div class="tiles">
-            ${this._tile(T.connection, c.connection_entity, "mdi:lan-connect", "connection")}
-            ${this._tile(T.mode, c.mode_entity, "mdi:connection")}
-            ${this._tile(T.channel, c.channel_entity, "mdi:update")}
-            ${this._tile(T.radio, c.zigbee_type_entity, "mdi:zigbee")}
-          </div>
-
+          <section class="tiles">${tiles}</section>
           <div class="sec"><ha-icon icon="mdi:cog-refresh-outline"></ha-icon><span>${slzbEsc(T.s_firmware)}</span></div>
-          <div class="fws">
-            ${this._fwRow("Core", "mdi:chip", c.core_update_entity, c.core_restart_entity)}
-            ${this._fwRow(radioLabel, "mdi:zigbee", c.zigbee_update_entity, c.zigbee_restart_entity)}
-            ${this._fwRow("Z-Wave", "mdi:z-wave", c.zwave_update_entity, c.zwave_restart_entity)}
-          </div>
-        </div>
+          <section class="fws">${fws}</section>
+        </main>
       </ha-card>`;
 
     this.shadowRoot.querySelectorAll("[data-more]").forEach((el) => {
@@ -361,12 +468,14 @@ class SlzbCard extends HTMLElement {
     this.shadowRoot.querySelectorAll("[data-press]").forEach((el) => {
       el.addEventListener("click", () => this._press(el));
     });
-    this.shadowRoot.querySelectorAll("img[data-fallback]").forEach((img) => {
-      img.addEventListener("error", () => {
-        if (img.getAttribute("src") !== SLZB_IMAGE) img.setAttribute("src", SLZB_IMAGE);
-        else if (img.parentElement) img.parentElement.style.display = "none";
+    this.shadowRoot.querySelectorAll("img[data-fallback]").forEach((im) => {
+      im.addEventListener("error", () => {
+        if (im.getAttribute("src") !== SLZB_IMAGE) im.setAttribute("src", SLZB_IMAGE);
+        else if (im.parentElement) im.parentElement.style.display = "none";
       });
     });
+    this._applyTier();
+    this._measure();
   }
 
   /* ---------- Aktionen ---------- */
@@ -380,7 +489,8 @@ class SlzbCard extends HTMLElement {
 
   _press(btn) {
     const id = btn.dataset.press;
-    if (!id || btn.disabled || !this._hass) return;
+    // Während "Gesendet" angezeigt wird, zählt ein weiteres Tippen nicht (sonst stünde "Nochmal tippen" in Grün da)
+    if (!id || btn.disabled || !this._hass || btn.classList.contains("sent")) return;
     const label = btn.querySelector(".rl");
     const T = SLZBT(this._hass);
     const reset = () => {
@@ -388,6 +498,7 @@ class SlzbCard extends HTMLElement {
       label.textContent = T.restart;
     };
 
+    // Erstes Tippen nur "scharf schalten", erst das zweite löst aus
     if (this._config.confirm_actions !== false && !btn.classList.contains("arm")) {
       btn.classList.add("arm");
       label.textContent = T.tap_again;
@@ -400,126 +511,119 @@ class SlzbCard extends HTMLElement {
     btn.classList.remove("arm");
     btn.classList.add("sent");
     label.textContent = T.sent;
-    this._hass.callService(id.split(".")[0], "press", { entity_id: id });
+    // Einen fehlgeschlagenen Aufruf meldet Home Assistant selbst; hier nur die unbehandelte Ablehnung vermeiden
+    Promise.resolve(this._hass.callService(id.split(".")[0], "press", { entity_id: id })).catch(() => {});
     btn._t = setTimeout(reset, 2500);
   }
 
   /* ---------- Styles ---------- */
 
+  /* Alle Größen in em: Die Basisschrift wächst mit der Kartenbreite (iPhone → iPad → Kiosk).
+     Bewusst ohne backdrop-filter/blur – schont den Raspberry Pi. */
   static get css() {
     return `
-      :host { display: block; }
-      ha-card {
-        overflow: hidden;
-        container-type: inline-size;
+      :host {
+        display: block; width: 100%; height: 100%; container-type: inline-size;
+        --txt: var(--primary-text-color, #111);
+        --mut: var(--secondary-text-color, #777);
+        --pri: var(--primary-color, #03a9f4);
+        --ok: var(--success-color, #4caf50);
+        --warn: var(--warning-color, #ff9800);
+        --err: var(--error-color, #f44336);
+        --line: color-mix(in srgb, var(--txt) 12%, transparent);
+        --fill: color-mix(in srgb, var(--txt) 5%, transparent);
+        --fill-hi: color-mix(in srgb, var(--txt) 10%, transparent);
       }
-      .main {
-        --line: color-mix(in srgb, var(--primary-text-color, #888) 14%, transparent);
-        --fill: color-mix(in srgb, var(--primary-text-color, #888) 6%, transparent);
-        --ok: var(--success-color, #43a047);
-        --warn: var(--warning-color, #ffa600);
-        --bad: var(--error-color, #db4437);
-        padding: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        color: var(--primary-text-color);
-        position: relative;
-        isolation: isolate;
-        box-sizing: border-box;
-        min-height: 500px;      /* feste Kartenhöhe; der Inhalt ist kürzer, es wird nichts abgeschnitten */
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; text-align: left; border: 0; background: none; padding: 0; margin: 0; }
+      /* Hintergrund, Rand und Radius kommen vom Theme */
+      ha-card { position: relative; height: 100%; font-size: var(--fs, 14px); overflow: hidden; color: var(--txt); }
+      main { position: relative; z-index: 1; padding: 16px; display: grid; gap: .6em; }
+      .tone-primary { --t: var(--pri); } .tone-success { --t: var(--ok); } .tone-warning { --t: var(--warn); }
+      .tone-error { --t: var(--err); } .tone-neutral { --t: var(--mut); }
+      .panel { background: var(--fill); border: 1px solid var(--line); border-radius: 1.1em; }
+      .chip {
+        flex: none; display: grid; place-items: center; width: 2.1em; height: 2.1em; border-radius: .65em;
+        background: color-mix(in srgb, var(--t, var(--pri)) 18%, transparent); color: var(--t, var(--pri));
       }
-      .main > :not(.bgimg) { position: relative; z-index: 1; }
-      button {
-        font: inherit;
-        color: inherit;
-        background: none;
-        border: 0;
-        padding: 0;
-        margin: 0;
-        text-align: left;
-        cursor: pointer;
-        -webkit-tap-highlight-color: transparent;
-      }
+      .chip ha-icon { --mdc-icon-size: 1.3em; }
+      .chip.big { width: 2.8em; height: 2.8em; border-radius: .85em; }
+      .chip.big ha-icon { --mdc-icon-size: 1.7em; }
 
       /* Kopf */
-      .top { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 12px; height: 72px; }
+      .top { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: .8em; min-height: 4.6em; }
       .top.inline { grid-template-columns: minmax(0, 1fr) auto; }
-      .title { display: flex; align-items: center; gap: 12px; min-width: 0; }
-      .bigchip {
-        flex: none; width: 48px; height: 48px; border-radius: 16px;
-        display: grid; place-items: center;
-        background: color-mix(in srgb, var(--primary-color, #03a9f4) 18%, transparent);
-        color: var(--primary-color, #03a9f4);
-        --mdc-icon-size: 28px;
-      }
+      .title { display: flex; align-items: center; gap: .7em; min-width: 0; }
       .tt { min-width: 0; }
-      h1 { margin: 0; font-size: 1.35em; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .tt p { margin: 2px 0 0; color: var(--secondary-text-color); font-size: .9em; }
-      .art { position: relative; width: clamp(110px, 44%, 190px); }
-      .art::before {
-        content: ""; position: absolute; inset: 6% 2%; border-radius: 50%; z-index: 0;
-        background: radial-gradient(closest-side, color-mix(in srgb, var(--primary-text-color, #888) 14%, transparent), transparent);
-      }
-      .art img { position: relative; z-index: 1; }
+      h1 { margin: 0; font-size: 1.7em; font-weight: 600; line-height: 1.1; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tt p { margin: .25em 0 0; color: var(--mut); font-size: .9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .art img, .bgimg img {
-        display: block; width: 100%; height: auto; object-fit: contain;
-        filter: drop-shadow(0 0 1.5px color-mix(in srgb, var(--primary-text-color, #888) 55%, transparent))
-                drop-shadow(0 6px 8px rgba(0, 0, 0, .22));
+        display: block; object-fit: contain;
+        filter: drop-shadow(0 0 1.5px color-mix(in srgb, var(--txt) 55%, transparent)) drop-shadow(0 .4em .5em rgba(0, 0, 0, .22));
       }
-      .art img { max-height: 72px; }
-      /* Hintergrundbild oben rechts, zum Rand hin ausgeblendet (wie in der NAS-Card) */
+      .art { width: clamp(7em, 40%, 13em); }
+      .art img { width: 100%; height: auto; max-height: 4.6em; }
+      /* Hintergrundbild oben rechts im Kopfbereich, zum Rand hin ausgeblendet; der Titel liegt darüber */
       .bgimg {
-        position: absolute; top: 6px; right: 8px; width: 50%;
-        opacity: .55; pointer-events: none; z-index: 0;
+        position: absolute; z-index: 0; top: .5em; right: .6em; width: 50%; height: 5em; pointer-events: none;
+        display: flex; justify-content: flex-end; align-items: flex-start;
         -webkit-mask-image: radial-gradient(ellipse 85% 85% at 55% 45%, #000 50%, transparent 100%);
         mask-image: radial-gradient(ellipse 85% 85% at 55% 45%, #000 50%, transparent 100%);
       }
+      .bgimg img { max-width: 100%; max-height: 100%; width: auto; height: auto; }
 
       /* Kacheln */
-      .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-      .tile, .fwmain {
-        display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px;
-        box-sizing: border-box; height: 63px; overflow: hidden; padding: 6px 12px;
-        border-radius: 16px; background: var(--fill); border: 1px solid var(--line);
-        -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
-        transition: background .15s;
+      .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6em; }
+      .tile {
+        min-width: 0; min-height: 4.2em; display: flex; align-items: center; gap: .7em; padding: .6em .8em;
+        background: var(--fill); border: 1px solid var(--line); border-radius: 1em;
       }
-      .tile:active, .fwmain:active { background: var(--line); }
-      .chip {
-        width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center;
-        background: var(--line); color: var(--secondary-text-color); --mdc-icon-size: 20px;
-      }
-      .txt { display: flex; flex-direction: column; min-width: 0; gap: 1px; line-height: 1.25; }
-      .lab { font-size: .75em; color: var(--secondary-text-color); letter-spacing: .02em; }
-      .val { font-size: 1em; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-      .ok   .chip { background: color-mix(in srgb, var(--ok) 20%, transparent);   color: var(--ok); }
-      .warn .chip { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
-      .bad  .chip { background: color-mix(in srgb, var(--bad) 20%, transparent);  color: var(--bad); }
-      .off  .val  { color: var(--secondary-text-color); font-weight: 400; }
-      .ok.tile .val { color: var(--ok); }
-      .bad.tile .val { color: var(--bad); }
+      .at { display: grid; gap: .1em; min-width: 0; flex: 1; }
+      .at b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .at small { color: var(--mut); font-size: .85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tile.conn .at b { color: var(--t); }
+      .tile.tone-neutral .at b { color: var(--mut); font-weight: 400; }
+      .tile:active, .fwmain:active, .restart:active { background: var(--fill-hi); transform: scale(.985); }
+      @media (hover: hover) { .tile:hover, .fwmain:hover, .restart:hover { background: var(--fill-hi); } }
+      .tile:focus-visible, .fwmain:focus-visible, .restart:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
 
       /* Abschnitt */
-      .sec { display: flex; align-items: center; gap: 8px; height: 20px; color: var(--secondary-text-color); font-size: .85em; font-weight: 600; letter-spacing: .03em; --mdc-icon-size: 18px; }
+      .sec { display: flex; align-items: center; gap: .5em; margin-top: .2em; color: var(--mut); font-size: .9em; font-weight: 600; --mdc-icon-size: 1.3em; }
       .sec::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
       /* Firmware-Zeilen */
-      .fws { display: grid; grid-template-columns: 1fr; gap: 8px; }
-      .fw { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+      .fws { display: grid; gap: .6em; }
+      .fw { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .6em; }
+      .fwmain { min-width: 0; min-height: 4.2em; display: flex; align-items: center; gap: .7em; padding: .6em .8em; }
+      .fwmain .at { min-width: 3.8em; }
+      .pill {
+        flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: .5em; min-height: 2em; padding: .15em .8em .15em .6em; border-radius: 999px;
+        background: color-mix(in srgb, var(--t) 16%, transparent); border: 1px solid color-mix(in srgb, var(--t) 40%, transparent);
+      }
+      .pill b { min-width: 0; font-weight: 600; font-size: .9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+      .dot { flex: none; width: .6em; height: .6em; border-radius: 50%; background: var(--t); box-shadow: 0 0 .55em .05em color-mix(in srgb, var(--t) 70%, transparent); }
+      .bar { display: block; height: .3em; border-radius: .2em; margin-top: .25em; background: var(--line); overflow: hidden; }
+      .bar u { display: block; height: 100%; border-radius: inherit; background: var(--t); text-decoration: none; }
       .restart {
-        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-        box-sizing: border-box; height: 63px; min-width: 84px; padding: 8px 10px; border-radius: 16px;
-        background: var(--fill); border: 1px solid var(--line);
-        color: var(--secondary-text-color); --mdc-icon-size: 20px;
+        min-width: 5.4em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15em;
+        padding: .5em .7em; color: var(--mut); --mdc-icon-size: 1.4em;
         transition: background .15s, color .15s, border-color .15s;
       }
-      .restart .rl { font-size: .72em; font-weight: 600; white-space: nowrap; }
-      .restart:active { background: var(--line); }
+      .restart .rl { font-size: .8em; font-weight: 600; white-space: nowrap; }
       .restart[disabled] { opacity: .4; pointer-events: none; }
-      .restart.arm { background: color-mix(in srgb, var(--bad) 18%, transparent); border-color: var(--bad); color: var(--bad); }
+      .restart.arm { background: color-mix(in srgb, var(--err) 18%, transparent); border-color: var(--err); color: var(--err); }
       .restart.sent { background: color-mix(in srgb, var(--ok) 18%, transparent); border-color: var(--ok); color: var(--ok); }
+
+      /* sehr schmal (Klasse setzt _applyTier() mit Hysterese): Pill enger, damit Name und Version lesbar bleiben */
+      .slim main { padding: 12px; }
+      .slim .pill { gap: .35em; padding: .1em .6em .1em .45em; }
+      .slim .restart { min-width: 4.8em; }
+      .slim .fwmain { gap: .5em; padding: .6em; }
+      .slim .fwmain > .chip { display: none; }
+      @media (prefers-reduced-motion: reduce) {
+        .restart { transition: none; }
+        .tile:active, .fwmain:active, .restart:active { transform: none; }
+      }
     `;
   }
 }
@@ -535,6 +639,7 @@ if (!window.customCards.some((c) => c.type === "slzb-card")) {
     name: "SLZB Card",
     description: SLZBT().description,
     preview: false,
+    documentationURL: "https://github.com/BeGiBue/home-assistant-slzb-card",
   });
 }
 

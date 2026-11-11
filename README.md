@@ -10,12 +10,12 @@
 
 Overview card for the **SMLIGHT SLZB-MRW10U** (PoE device with Zigbee, Z-Wave and Thread) in Home Assistant.
 
-<img src="https://raw.githubusercontent.com/BeGiBue/home-assistant-slzb-card/main/screenshots/slzb-normal-350-light.png" width="350" alt="SLZB Card, 350 px wide, light theme">
+<img src="https://raw.githubusercontent.com/BeGiBue/home-assistant-slzb-card/main/screenshots/slzb-normal-350-light.png?v=2" width="350" alt="SLZB Card, 350 px wide, light theme">
 
 ### Features
 
 - Connection, connection mode, firmware channel and radio protocol at a glance
-- Firmware status for core, radio module and Z-Wave
+- Firmware status for core, radio module and Z-Wave with version number and install progress
 - Restart buttons with a second-tap confirmation
 - Built-in device image, or your own image URL
 - Follows light/dark mode and themes; works on phone, tablet and desktop
@@ -35,12 +35,12 @@ Independent community project, not affiliated with SMLIGHT or Home Assistant. Br
 
 Übersichtskarte für den **SMLIGHT SLZB-MRW10U** (PoE-Gerät mit Zigbee, Z-Wave und Thread) in Home Assistant.
 
-<img src="https://raw.githubusercontent.com/BeGiBue/home-assistant-slzb-card/main/screenshots/slzb-normal-350-light.png" width="350" alt="SLZB Card, 350 px breit, helles Theme">
+<img src="https://raw.githubusercontent.com/BeGiBue/home-assistant-slzb-card/main/screenshots/slzb-normal-350-light.png?v=2" width="350" alt="SLZB Card, 350 px breit, helles Theme">
 
 ### Funktionen
 
 - Verbindung, Verbindungsmodus, Firmware-Kanal und Funkstandard auf einen Blick
-- Firmware-Status für Core, Funkmodul und Z-Wave
+- Firmware-Status für Core, Funkmodul und Z-Wave mit Versionsnummer und Installationsfortschritt
 - Neustart-Buttons mit Bestätigung durch zweites Tippen
 - Eingebettetes Gerätebild oder eigene Bild-URL
 - Passt sich Light-/Dark-Mode und Themes an, läuft auf Handy, Tablet und Desktop
