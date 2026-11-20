@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.1 - 2026-11-20
+
+- Maintenance: test and build tools updated, no functional changes. / Wartung: Test- und Build-Werkzeuge aktualisiert, keine Änderungen an der Funktion.
+
 ## 2.2.0 - 2026-11-11
 
 - New look in line with the NAS, Eaton UPS and TouchKio cards: tinted icons, larger title, firmware rows with version number and a status pill ("Up to date", "Update" with the new version, progress in percent with a bar while installing). / Neues Aussehen passend zu NAS-, Eaton-UPS- und TouchKio-Card: getönte Symbole, größerer Titel, Firmware-Zeilen mit Versionsnummer und Status-Pill („Aktuell", „Update" mit der neuen Version, Fortschritt in Prozent mit Balken während der Installation).
